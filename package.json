@@ -1,0 +1,81 @@
+{
+  "name": "elecxarium",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Terrarium-inspired creature-coding battle simulator (sucrase + Web Worker sandbox).",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "start": "npm run electron:dev",
+    "preview": "vite preview --port 4180 --strictPort",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.engine.json",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "sim": "vite-node scripts/sim.ts",
+    "build:web": "npm run typecheck && vite build",
+    "deploy": "npm run build:web",
+    "electron:dev": "concurrently -k -n vite,electron \"vite\" \"wait-on http://localhost:5180 && electron . --dev-server-port=5180\"",
+    "app:build": "npm run build:web && electron-builder"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.22.0",
+    "monaco-editor": "^0.55.1",
+    "motion": "^12.42.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-resizable-panels": "^4.12.0",
+    "sucrase": "^3.35.1",
+    "tailwind-merge": "^3.6.0",
+    "zustand": "^5.0.14"
+  },
+  "build": {
+    "appId": "com.elecxarium.app",
+    "productName": "elecxarium",
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@tailwindcss/vite": "^4.3.2",
+    "@types/node": "^26.0.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "concurrently": "^10.0.3",
+    "electron": "^42.5.1",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.1",
+    "eslint": "^10.6.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "globals": "^17.7.0",
+    "prettier": "^3.9.3",
+    "tailwindcss": "^4.3.2",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.62.0",
+    "vite": "^8.1.0",
+    "vite-node": "^6.0.0",
+    "vitest": "^4.1.9",
+    "wait-on": "^9.0.10"
+  }
+}

@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>elecxarium — Manual</title>
+    <style>
+      :root {
+        --bg: #11141c;
+        --surface: #181c26;
+        --surface2: #20252f;
+        --border: #2c3340;
+        --fg: #eef1f6;
+        --muted: #9aa3b2;
+        --accent: #57c7e3;
+        --green: #6fe39b;
+        --red: #ff7a7a;
+        --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+        --sans: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--sans); line-height: 1.65; }
+      .wrap { max-width: 860px; margin: 0 auto; padding: 32px 20px 96px; }
+      a { color: var(--accent); }
+      h1 { font-size: 1.9rem; margin: 0 0 4px; letter-spacing: -0.02em; }
+      h2 { font-size: 1.3rem; margin: 40px 0 10px; padding-top: 12px; border-top: 1px solid var(--border); }
+      h3 { font-size: 1.02rem; margin: 22px 0 6px; color: var(--accent); }
+      p, li { color: #dfe4ec; }
+      .muted { color: var(--muted); }
+      code { font-family: var(--mono); font-size: 0.9em; background: var(--surface2); padding: 1px 5px; border-radius: 4px; }
+      pre { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; overflow-x: auto; }
+      pre code { background: none; padding: 0; font-size: 0.86rem; line-height: 1.55; }
+      table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.92rem; }
+      th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+      th { color: var(--muted); font-weight: 600; }
+      td code { white-space: nowrap; }
+      .topbar { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 24px; }
+      .pill { display: inline-block; font-size: 0.72rem; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; }
+      .lang { font-size: 0.85rem; }
+      ul { padding-left: 22px; }
+      .note { background: var(--surface); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; padding: 10px 14px; margin: 14px 0; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="topbar">
+        <a href="index.html">← Back to app</a>
+        <span class="lang"><a href="manual.ja.html">日本語</a></span>
+      </div>
+
+      <h1>elecxarium <span class="pill">Manual</span></h1>
+      <p class="muted">A browser-native, Terrarium-inspired ecosystem battle. You write a creature in TypeScript; it
+        runs in a sandboxed Web Worker and competes against other players' creatures in one deterministic world.</p>
+
+      <h2>1. The idea</h2>
+      <p>Each player writes one <strong>species</strong>. Every tick, the engine shows each of your creatures what it can
+        see (its <em>senses</em>) and asks your code for one <em>action</em>. Plants grow as free food, herbivores eat
+        plants, carnivores hunt herbivores. The species that builds the most sustained, surviving population wins.</p>
+
+      <h2>2. How to play</h2>
+      <ul>
+        <li><strong>Tabs (top-left)</strong> — one tab = one player/species. <code>+</code> adds a species; the colored
+          dot is that species' color (change it with the <strong>Color</strong> swatches).</li>
+        <li><strong>Template ▾</strong> — insert a starter creature into the active tab.</li>
+        <li><strong>Run match</strong> — compiles every creature and starts a new match.</li>
+        <li><strong>▶ / ⏸ / ⏭</strong> — play, pause, single-step. <strong>Speed</strong> sets ticks per second.
+          <strong>Seed</strong> — every Run uses a fresh random seed; tick <strong>lock</strong> (or type a seed and press 🎲) to replay the exact same match.</li>
+        <li><strong>🎞 Replay</strong> — scrub the finished match on a timeline. <strong>↺</strong> resets.</li>
+        <li><strong>🏆 Tournament</strong> — runs the loaded creatures across 5 seeds and reports aggregate standings in
+          the log.</li>
+        <li><strong>Share</strong> — copies a URL that re-loads your exact creatures for someone else.</li>
+        <li><strong>Leaderboard / Legend</strong> — live population, biomass, kills, births; the legend explains the
+          arena's colors and shapes (each species, green = plant/food, grey = carcass). Hover a creature for its stats.</li>
+      </ul>
+
+      <h2>3. Roles &amp; the food chain</h2>
+      <p>A creature declares one <strong>role</strong>:</p>
+      <table>
+        <tr><th>Role</th><th>Eats</th><th>Can</th></tr>
+        <tr><td><code>herbivore</code></td><td>plants</td><td>move, eat, reproduce, defend</td></tr>
+        <tr><td><code>carnivore</code></td><td>carcasses (attack prey to create them)</td><td>move, attack, eat, reproduce, defend</td></tr>
+        <tr><td><code>plant</code></td><td>— (photosynthesises)</td><td>reproduce only — rooted: can't move/attack/eat</td></tr>
+      </table>
+      <p class="muted">A <code>plant</code> species is rooted and lives off photosynthesis (its energy income scales with the
+        <code>eatingSpeed</code> trait); herbivores graze it like any other plant. The arena also auto-spawns simple
+        background plants as baseline food, so a herbivore never depends on someone writing a plant. Carnivores can't eat
+        a living animal directly — <code>attack</code> it until it dies, then <code>eat</code> the carcass.</p>
+
+      <h2>4. Writing a creature</h2>
+      <p>You export one <code>defineCreature({...})</code>. Imports resolve from <code>@elecxarium/creature</code>.</p>
+      <pre><code>import { defineCreature, moveToward, nearest, eat } from '@elecxarium/creature';
+
+interface Mem { target: { x: number; y: number } | null }
+
+export default defineCreature&lt;Mem&gt;({
+  meta: { name: 'MyGrazer', author: 'you', role: 'herbivore' },
+  // 100 points to split across all 7 traits (the sum must be &lt;= 100)
+  traits: { maxEnergy: 25, eyesight: 25, speed: 20, attack: 0, defense: 10, eatingSpeed: 20, camouflage: 0 },
+  // optional: custom SVG look (currentColor = your species color)
+  appearance: { viewBox: '0 0 32 32', svg: '&lt;circle cx="16" cy="16" r="11" fill="currentColor"/&gt;' },
+  initMemory: () =&gt; ({ target: null }),       // optional per-creature memory
+  think(sense, mem) {                          // called once per creature per tick
+    const plant = nearest(sense.nearby, (o) =&gt; o.kind === 'plant');
+    if (!plant) return moveToward(sense.world.center);
+    return plant.distance &lt;= sense.self.reach ? eat(plant.id) : moveToward(plant.position);
+  },
+});</code></pre>
+
+      <h3>traits — the point budget</h3>
+      <p>Seven integer traits, each ≥ 0, summing to <strong>≤ 100</strong> (over-budget creatures are rejected).</p>
+      <table>
+        <tr><th>Trait</th><th>Effect (at value <code>v</code>)</th></tr>
+        <tr><td><code>maxEnergy</code></td><td>energy capacity = <code>60 + v·1.4</code></td></tr>
+        <tr><td><code>eyesight</code></td><td>sight radius = <code>40 + v·2.6</code> (how far <code>nearby</code> reaches)</td></tr>
+        <tr><td><code>speed</code></td><td>max move distance/tick = <code>4 + v·0.16</code> (moving costs energy)</td></tr>
+        <tr><td><code>attack</code></td><td>damage per hit = <code>4 + v·0.5</code> (carnivores only)</td></tr>
+        <tr><td><code>defense</code></td><td>flat damage reduction = <code>v·0.25</code> (and <code>defend()</code> halves the hit)</td></tr>
+        <tr><td><code>eatingSpeed</code></td><td>energy gained per eat = <code>4 + v·0.26</code></td></tr>
+        <tr><td><code>camouflage</code></td><td>shrinks the range at which others see you</td></tr>
+      </table>
+
+      <h3>think(sense, memory) → Action</h3>
+      <p>Return exactly one <strong>Action</strong> each tick. <code>sense</code> is read-only; <code>memory</code>
+        persists across ticks for that individual.</p>
+
+      <h3>sense</h3>
+      <table>
+        <tr><th>Field</th><th>Meaning</th></tr>
+        <tr><td><code>sense.tick</code></td><td>current tick number</td></tr>
+        <tr><td><code>sense.self</code></td><td><code>{ id, position, energy, energyMax, age, lifespan, reach, moveMax, sightRadius, canReproduce }</code></td></tr>
+        <tr><td><code>sense.world</code></td><td><code>{ width, height, center }</code></td></tr>
+        <tr><td><code>sense.nearby</code></td><td>array of visible things: <code>{ id, kind:'animal'|'plant'|'carcass', role?, species, isOwn, position, distance, energyState:'high'|'medium'|'low', isAlive }</code></td></tr>
+        <tr><td><code>sense.events</code></td><td>what happened to you since last tick: <code>attacked</code>, <code>ateOk</code>, <code>eatFailed</code>, <code>born</code>, <code>reproduced</code></td></tr>
+        <tr><td><code>sense.random()</code></td><td>deterministic random in [0, 1) (use this, not <code>Math.random</code>, for reproducible behavior)</td></tr>
+      </table>
+
+      <h3>Actions &amp; helpers</h3>
+      <table>
+        <tr><th>Action</th><th>Helper</th><th>Effect</th></tr>
+        <tr><td><code>{ kind:'move', to }</code></td><td><code>move(to)</code> / <code>moveToward(pos)</code></td><td>head toward a point (capped at <code>moveMax</code>)</td></tr>
+        <tr><td><code>{ kind:'attack', targetId }</code></td><td><code>attack(id)</code></td><td>carnivore bites an adjacent animal</td></tr>
+        <tr><td><code>{ kind:'eat', targetId }</code></td><td><code>eat(id)</code></td><td>eat an adjacent plant (herbivore) or carcass (carnivore)</td></tr>
+        <tr><td><code>{ kind:'reproduce' }</code></td><td><code>reproduce()</code></td><td>spawn a child (costs ~50% of max energy)</td></tr>
+        <tr><td><code>{ kind:'defend' }</code></td><td><code>defend()</code></td><td>halve incoming damage this tick</td></tr>
+        <tr><td><code>{ kind:'idle' }</code></td><td><code>idle()</code></td><td>do nothing</td></tr>
+      </table>
+      <p>Selection helpers: <code>nearest(list, pred?)</code>, <code>farthest(list, pred?)</code>,
+        <code>dist(a, b)</code>, <code>clampToWorld(pos, world)</code>.</p>
+
+      <h2>5. Rules of the world</h2>
+      <ul>
+        <li><strong>Energy</strong> drains every tick (more for larger, faster, moving creatures). Reaching 0 = death.</li>
+        <li><strong>Reproduction</strong> needs energy ≥ 60% of capacity and a cooldown; it costs ~50% of max energy,
+          so breed only when well-fed.</li>
+        <li><strong>Death</strong> (starvation or old age, ~1500 ticks) leaves a carcass that carnivores can scavenge
+          before it decays.</li>
+        <li><strong>Reach</strong> for attack/eat is small (<code>sense.self.reach</code>) — you must be adjacent.</li>
+        <li><strong>Match end</strong>: one species left, or 3000 ticks. <strong>Score</strong> = survival first, then
+          time-integrated population (sustained dominance), then current biomass.</li>
+      </ul>
+
+      <h2>6. Tips</h2>
+      <ul>
+        <li>Don't reproduce the moment you can — eat first, breed when nearly full.</li>
+        <li>Herbivores: balance <code>eyesight</code> (find food), <code>speed</code> (reach it), <code>eatingSpeed</code>
+          (refuel), and some <code>defense</code>/<code>camouflage</code> to survive predators.</li>
+        <li>Carnivores: <code>attack</code> + <code>speed</code> to catch prey, a little <code>eatingSpeed</code> to
+          scavenge carcasses; keep <code>maxEnergy</code> low so you start hungry and hunt.</li>
+        <li>Use <code>memory</code> to remember a patrol target so you explore instead of standing still.</li>
+        <li>Use <strong>Tournament</strong> to test across seeds — a creature that wins one seed may lose another.</li>
+      </ul>
+
+      <h2>7. Safety &amp; determinism</h2>
+      <p class="muted">Your code runs in a Web Worker with no network, filesystem, DOM, or <code>eval</code> access — it
+        only exchanges plain data (senses in, action out) with the engine. The whole simulation is deterministic given a
+        seed, so replays and shared links reproduce the exact same match. <code>Math.random</code> is replaced by the
+        seeded stream behind <code>sense.random()</code>.</p>
+    </div>
+  </body>
+</html>

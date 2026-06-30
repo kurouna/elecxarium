@@ -1,0 +1,10 @@
+{
+  "//": "Purity gate: engine + creature-api must not touch DOM / WebWorker / Node APIs.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": [],
+    "noEmit": true
+  },
+  "include": ["src/engine", "src/creature-api"]
+}
