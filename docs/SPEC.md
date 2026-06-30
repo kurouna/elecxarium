@@ -552,7 +552,10 @@ export const CONFIG = {
   // 背景植物 + プログラマブル植物(role:'plant')の光合成: energy/tick = PHOTO_BASE + eatingSpeed*PHOTO_PER_POINT - UPKEEP
   plants:  { PLANT_TARGET: 155, PLANT_GROWTH: 0.9, PLANT_MAX: 80, RESPAWN_EVERY: 6, RESPAWN_BATCH: 14,
              PHOTO_BASE: 0.15, PHOTO_PER_POINT: 0.03, UPKEEP: 0.12, SPECIES_CAP: 150 }, // 植物は種ごとに個体数上限
-  // バランスは scripts/sim.ts で計測・調整（既定 Grazer vs Stalker は 40 シードで ~57/43、両者が高頻度で生存）
+  // バランスは scripts/sim.ts で計測・調整。2種(Grazer vs Stalker)は ~57/43 で両者が高頻度で生存。
+  // 3種(Bloom/Grazer/Stalker)は 50 シードで生存率 100/80/60%・both-extinct 0 の安定共存（肉食は2種と同水準）。
+  // 鍵: 草食は「最寄りの植物」ではなく「実入りのある(=energyState!=='low')植物」を採り、枯れたら移動して採餌する
+  // こと。これを怠ると植物に張り付き(camping)→獲物が密集→肉食が過剰捕食して共倒れになる（v0.3 で判明・修正）。
   // 初期エネルギー = energyMax*0.7、全種を世界全体に一様散布（v0.3 で世界4倍・個体数増）
   compute: { COMPUTE_BASE_MS: 6, COMPUTE_PER_CREATURE_MS: 1.5, COMPUTE_MAX_MS: 120, STRIKES_MAX: 3 },
   scoring: { W_SURVIVAL: 1e9, W_POP_INTEGRAL: 1, W_BIOMASS: 1e-3 },

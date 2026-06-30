@@ -51,7 +51,10 @@ export default defineCreature<Mem>({
 
     if (self.canReproduce && self.energy > self.energyMax * 0.8) return { kind: 'reproduce' };
 
-    const plant = nearest(sense.nearby, (o) => o.kind === 'plant');
+    // Forage smartly: head for the nearest plant that's actually worth eating, and
+    // once a plant is grazed down ('low'), move on to a fuller one instead of camping
+    // its slow regrowth. (A grazer that squats on one plant is both boring and starves.)
+    const plant = nearest(sense.nearby, (o) => o.kind === 'plant' && o.energyState !== 'low');
     if (plant) {
       mem.roam = null;
       return plant.distance <= self.reach ? eat(plant.id) : moveToward(plant.position);

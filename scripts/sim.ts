@@ -39,8 +39,12 @@ interface Agg {
   peak: number;
   finalAlive: number;
   kills: number;
+  moveSum: number; // Σ per-creature move distance, to detect "camping" (avgMove ≈ 0)
+  moveTicks: number; // number of (creature, tick) samples that contributed to moveSum
 }
-const agg = new Map<string, Agg>(defs.map((d) => [d.id, { wins: 0, survived: 0, peak: 0, finalAlive: 0, kills: 0 }]));
+const agg = new Map<string, Agg>(
+  defs.map((d) => [d.id, { wins: 0, survived: 0, peak: 0, finalAlive: 0, kills: 0, moveSum: 0, moveTicks: 0 }]),
+);
 let bothExtinct = 0;
 let totalTicks = 0;
 
@@ -51,6 +55,11 @@ for (let s = 0; s < seeds; s++) {
   let guard = 0;
   while (!isMatchOver(world) && guard < ticks + 1) {
     stepWithBrainsSync(world, host);
+    for (const a of world.animals.values()) {
+      const ag = agg.get(a.speciesId)!;
+      ag.moveSum += a.lastMoveDist;
+      ag.moveTicks += 1;
+    }
     guard++;
   }
   totalTicks += world.tick;
@@ -77,6 +86,6 @@ for (const d of defs) {
   const a = agg.get(d.id)!;
   const pct = ((a.wins / seeds) * 100).toFixed(0);
   console.log(
-    `${d.name.padEnd(10)} ${d.role.padEnd(9)} wins ${String(a.wins).padStart(2)}/${seeds} (${pct.padStart(3)}%) | survived ${String(a.survived).padStart(2)}/${seeds} | avgPeak ${(a.peak / seeds).toFixed(1).padStart(5)} | avgFinal ${(a.finalAlive / seeds).toFixed(1).padStart(5)} | avgKills ${(a.kills / seeds).toFixed(1)}`,
+    `${d.name.padEnd(10)} ${d.role.padEnd(9)} wins ${String(a.wins).padStart(2)}/${seeds} (${pct.padStart(3)}%) | survived ${String(a.survived).padStart(2)}/${seeds} | avgPeak ${(a.peak / seeds).toFixed(1).padStart(5)} | avgFinal ${(a.finalAlive / seeds).toFixed(1).padStart(5)} | avgKills ${(a.kills / seeds).toFixed(1)} | avgMove ${(a.moveSum / Math.max(1, a.moveTicks)).toFixed(2)}`,
   );
 }
