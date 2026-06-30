@@ -170,12 +170,37 @@ export default defineCreature({
 });
 `;
 
+const MIN_PLANT = `import { defineCreature } from '@elecxarium/creature';
+
+// A simple plant: photosynthesise, and spread by reproducing whenever nearly full.
+export default defineCreature({
+  meta: { name: 'Moss', role: 'plant' },
+  // For plants: maxEnergy = storage, eatingSpeed = photosynthesis rate (no eyes/legs needed).
+  traits: { maxEnergy: 45, eyesight: 0, speed: 0, attack: 0, defense: 0, eatingSpeed: 55, camouflage: 0 },
+  appearance: {
+    viewBox: '0 0 32 32',
+    svg:
+      '<ellipse cx="16" cy="23" rx="12.5" ry="6.5" fill="currentColor"/>' +
+      '<circle cx="8.5" cy="18.5" r="4.5" fill="currentColor"/>' +
+      '<circle cx="16" cy="14.5" r="5.6" fill="currentColor"/>' +
+      '<circle cx="23.5" cy="18.5" r="4.5" fill="currentColor"/>',
+  },
+  think(sense) {
+    const self = sense.self;
+    return self.canReproduce && self.energy > self.energyMax * 0.85
+      ? { kind: 'reproduce' }
+      : { kind: 'idle' };
+  },
+});
+`;
+
 export const TEMPLATES: CreatureTemplate[] = [
   { id: 'grazer', label: 'Grazer — smart herbivore', source: GRAZER },
-  { id: 'stalker', label: 'Stalker — smart carnivore', source: STALKER },
-  { id: 'bloom', label: 'Bloom — programmable plant', source: PLANT },
   { id: 'sprout', label: 'Sprout — simple herbivore', source: MIN_HERBIVORE },
+  { id: 'stalker', label: 'Stalker — smart carnivore', source: STALKER },
   { id: 'fang', label: 'Fang — simple carnivore', source: MIN_CARNIVORE },
+  { id: 'bloom', label: 'Bloom — smart plant', source: PLANT },
+  { id: 'moss', label: 'Moss — simple plant', source: MIN_PLANT },
 ];
 
 export const DEFAULT_HERBIVORE = GRAZER;

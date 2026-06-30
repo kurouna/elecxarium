@@ -21,6 +21,9 @@ export interface Config {
     photoPerPoint: number;
     /** Per-tick maintenance subtracted from a plant's photosynthesis. */
     upkeep: number;
+    /** Carrying capacity: a role:'plant' species stops reproducing past this many alive
+     * (so a naive plant can't carpet the world / stall the renderer). */
+    speciesCap: number;
   };
   compute: { baseMs: number; perCreatureMs: number; maxMs: number; strikesMax: number };
   scoring: { wSurvival: number; wPopIntegral: number; wBiomass: number };
@@ -45,6 +48,7 @@ export const DEFAULT_CONFIG: Config = {
     photoBase: 0.15,
     photoPerPoint: 0.03,
     upkeep: 0.12,
+    speciesCap: 150,
   },
   compute: { baseMs: 6, perCreatureMs: 1.5, maxMs: 120, strikesMax: 3 },
   scoring: { wSurvival: 1e9, wPopIntegral: 1, wBiomass: 1e-3 },

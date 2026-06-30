@@ -125,6 +125,9 @@ function resolveReproduce(world: World, parent: Animal): void {
   const cfg = world.config;
   if (parent.reproduceCooldown > 0) return;
   if (parent.energy < sp.derived.energyMax * cfg.repro.threshold) return;
+  // Plant carrying capacity: prevents a naive/aggressive plant from carpeting the
+  // world (which would balloon per-tick cost and the SVG node count).
+  if (parent.role === 'plant' && sp.alive >= cfg.plants.speciesCap) return;
 
   const cost = sp.derived.energyMax * cfg.repro.cost;
   parent.energy -= cost;

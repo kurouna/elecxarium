@@ -3,7 +3,7 @@ import type { Action } from '@elecxarium/creature';
 import { addAnimal } from '@/engine/world';
 import { resolveTick } from '@/engine/tick';
 import { collectSenses } from '@/engine/sense';
-import { arena, sdef } from './helpers';
+import { arena, sdef, ZERO_SPAWN } from './helpers';
 
 const NONE: Map<string, Action> = new Map();
 const eat = (id: string, targetId: string): Map<string, Action> => new Map([[id, { kind: 'eat', targetId }]]);
@@ -85,5 +85,21 @@ describe('programmable plants (role:plant)', () => {
     expect(w.animals.size).toBe(2);
     const child = [...w.animals.values()].find((x) => x.id !== p.id)!;
     expect(child.role).toBe('plant');
+  });
+
+  it('stops reproducing once the plant species hits its carrying cap', () => {
+    const cfg = { ...ZERO_SPAWN, plants: { ...ZERO_SPAWN.plants, speciesCap: 3 } };
+    const w = arena([sdef('p', 'plant', { maxEnergy: 40 })], 1, cfg);
+    const sp = w.species.get('p')!;
+    for (let i = 0; i < 3; i++) {
+      const a = addAnimal(w, sp, { x: 100, y: 100 + i * 5 });
+      a.energy = sp.derived.energyMax;
+    }
+    expect(sp.alive).toBe(3);
+    // Every plant requests reproduction, but the cap blocks any new births.
+    const actions = new Map([...w.animals.values()].map((a) => [a.id, { kind: 'reproduce' as const }]));
+    resolveTick(w, actions);
+    expect(sp.births).toBe(0);
+    expect(sp.alive).toBe(3);
   });
 });

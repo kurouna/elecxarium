@@ -551,7 +551,7 @@ export const CONFIG = {
   carcass: { RESIDUAL: 0.92, DECAY_TICKS: 80 },
   // 背景植物 + プログラマブル植物(role:'plant')の光合成: energy/tick = PHOTO_BASE + eatingSpeed*PHOTO_PER_POINT - UPKEEP
   plants:  { PLANT_TARGET: 155, PLANT_GROWTH: 0.9, PLANT_MAX: 80, RESPAWN_EVERY: 6, RESPAWN_BATCH: 14,
-             PHOTO_BASE: 0.15, PHOTO_PER_POINT: 0.03, UPKEEP: 0.12 },
+             PHOTO_BASE: 0.15, PHOTO_PER_POINT: 0.03, UPKEEP: 0.12, SPECIES_CAP: 150 }, // 植物は種ごとに個体数上限
   // バランスは scripts/sim.ts で計測・調整（既定 Grazer vs Stalker は 40 シードで ~57/43、両者が高頻度で生存）
   // 初期エネルギー = energyMax*0.7、全種を世界全体に一様散布（v0.3 で世界4倍・個体数増）
   compute: { COMPUTE_BASE_MS: 6, COMPUTE_PER_CREATURE_MS: 1.5, COMPUTE_MAX_MS: 120, STRIKES_MAX: 3 },
@@ -586,7 +586,8 @@ export const CONFIG = {
 - **P2P エコシステム**（オリジナルの EcoSystem モード / 青いテレポーターボール）: v1 はローカル単一世界。
   将来 WebRTC or サーバ relay で種を機械間移動させる。
 - **✅ プログラマブル植物 (`role: 'plant'`)**: 実装済み。静止・光合成（収入は `eatingSpeed` に比例）・`reproduce` で散布。
-  草食は `kind:'plant'` として捕食でき、植物は死骸を残さない。背景の自動植物も従来どおり食料として併存。テンプレ "Bloom" 同梱。
+  草食は `kind:'plant'` として捕食でき、植物は死骸を残さない。背景の自動植物も従来どおり食料として併存。
+  テンプレは Bloom(smart=過密回避)/Moss(simple=素朴に拡散) の2種。素朴な植物が世界を埋めないよう種ごとに個体数上限 `speciesCap`(150)。
 - **アンテナ／シグナリング**（Terrarium の Antennas）: 個体間で数値シグナルを発信・受信し群れ・協調行動を可能にする。
   案: `think` の戻りに `signal?: number` を追加し `OrganismView.signal?` で受信。**Terrarium 忠実度向上の最優先候補**（次段で実装予定）。
 - **子への遺伝情報 (DNA)**: `reproduce` に `childMemory?` を載せ子の初期メモリへ継承し、学習・進化戦略を可能にする（次段）。
