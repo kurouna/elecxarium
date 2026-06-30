@@ -1,7 +1,16 @@
 name: Deploy (Cloudflare Pages)
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [main] # auto-deploy production on merge to main
+  workflow_dispatch: # plus manual "Run workflow" button
+
+permissions:
+  contents: read
+
+concurrency: # never run two deploys at once; newest wins
+  group: pages-deploy
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -13,9 +22,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build:web
-      - uses: cloudflare/wrangler-action@v3
+      - run: npm run build:web # runs typecheck, then `vite build` → dist/
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # production branch (main) → production; any other branch → preview deployment
           command: pages deploy dist --project-name=elecxarium --branch=${{ github.ref_name }}
