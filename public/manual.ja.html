@@ -50,9 +50,9 @@
         サンドボックス化された Web Worker 上で動き、1つの決定論的な世界で他プレイヤーのコードと競います。</p>
 
       <h2>1. コンセプト</h2>
-      <p>各プレイヤーは <strong>1つの種</strong>を書きます。毎ティック、エンジンが各個体に「見えているもの（senses）」を渡し、
-        あなたのコードに「行動（action）」を1つ尋ねます。植物が無料の食料として生え、草食は植物を、肉食は草食を食べます。
-        持続的に多くの個体を生存させた種が勝ちます。</p>
+      <p>各タブが1体の生き物（その<strong>種</strong>）です。あなたはその「脳」＝<code>think()</code> 関数を書きます。
+        エンジンは毎ティック、あなたの各個体に「見えているもの（senses）」を渡し、<code>think()</code> が「行動（action）」を
+        1つ返します。植物が無料の食料として生え、草食は植物を食べ、肉食は草食を狩ります。持続的に多くの個体を生存させた種が勝ちます。</p>
 
       <h2>2. 遊び方</h2>
       <ul>
@@ -61,7 +61,7 @@
         <li><strong>Template ▾</strong> … アクティブなタブにスターターを挿入。</li>
         <li><strong>Run match</strong> … 全種をコンパイルして新規対戦を開始。</li>
         <li><strong>▶ / ⏸ / ⏭</strong> … 再生・一時停止・1ティック送り。<strong>Speed</strong> は毎秒ティック数、
-          <strong>Seed</strong> … Run ごとに新しい乱数 seed を使用。<strong>lock</strong>（または値を入力して 🎲）で同じ対戦を再現できます。</li>
+          <strong>Seed</strong> … Run ごとに新しい乱数 seed を使用。<strong>lock</strong> すると毎回同じ seed を使い、同じ対戦を再現できます（値を直接入力して seed を指定／🎲 で新しい乱数）。</li>
         <li><strong>🎞 リプレイ</strong> … 終了した対戦をタイムラインで再生。<strong>↺</strong> でリセット。</li>
         <li><strong>🏆 トーナメント</strong> … 読み込んだ種を5シードで総当たりし、集計順位をログに表示。</li>
         <li><strong>Share</strong> … その種一式を埋め込んだ URL をコピー（他の人がそのまま読み込めます）。</li>
@@ -74,7 +74,7 @@
       <table>
         <tr><th>役割</th><th>食べるもの</th><th>できること</th></tr>
         <tr><td><code>herbivore</code>（草食）</td><td>植物</td><td>移動・捕食・繁殖・防御</td></tr>
-        <tr><td><code>carnivore</code>（肉食）</td><td>死骸（獲物を攻撃して作る）</td><td>移動・攻撃・捕食・繁殖・防御</td></tr>
+        <tr><td><code>carnivore</code>（肉食）</td><td>草食動物など（<code>attack</code>で倒し、残った死骸を<code>eat</code>）</td><td>移動・攻撃・捕食・繁殖・防御</td></tr>
         <tr><td><code>plant</code>（植物）</td><td>—（光合成）</td><td>繁殖のみ ― 根を張る（移動・攻撃・捕食は不可）</td></tr>
       </table>
       <p class="muted"><code>plant</code> 種は根を張り、光合成で増えます（エネルギー収入は <code>eatingSpeed</code> に比例）。草食はこれを
