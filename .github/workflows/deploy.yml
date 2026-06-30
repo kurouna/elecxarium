@@ -1,9 +1,10 @@
 name: Deploy (Cloudflare Pages)
 
 on:
-  push:
-    branches: [main] # auto-deploy production on merge to main
-  workflow_dispatch: # plus manual "Run workflow" button
+  # Publish ONLY on a manual trigger — never automatically on push. Publish timing is
+  # fully hand-controlled: GitHub "Actions tab → Run workflow", or `npm run deploy`
+  # (= gh workflow run). Nothing goes live until you ask for it.
+  workflow_dispatch:
 
 permissions:
   contents: read

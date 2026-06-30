@@ -17,7 +17,7 @@
     "test:watch": "vitest",
     "sim": "vite-node scripts/sim.ts",
     "build:web": "npm run typecheck && vite build",
-    "deploy": "npm run build:web",
+    "deploy": "gh workflow run deploy.yml",
     "electron:dev": "concurrently -k -n vite,electron \"vite\" \"wait-on http://localhost:5180 && electron . --dev-server-port=5180\"",
     "app:build": "npm run build:web && electron-builder"
   },
