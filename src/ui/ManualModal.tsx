@@ -62,7 +62,22 @@ export function ManualModal({
             <X className="size-4" />
           </button>
         </div>
-        <iframe key={lang} src={`manual.${lang}.html`} title="elecxarium manual" className="min-h-0 flex-1 border-0 bg-bg" />
+        <iframe
+          key={lang}
+          src={`manual.${lang}.html`}
+          title="elecxarium manual"
+          className="min-h-0 flex-1 border-0 bg-bg"
+          onLoad={(e) => {
+            // The modal already provides Close + a language toggle, so hide the manual's own
+            // top-bar. Its "Back to app" / language links target the iframe itself, which would
+            // otherwise load the whole app *inside* this modal (the reported nesting bug).
+            try {
+              e.currentTarget.contentDocument?.querySelector('.topbar')?.setAttribute('style', 'display:none');
+            } catch {
+              /* same-origin manual, so this should not throw; ignore if it ever does */
+            }
+          }}
+        />
       </div>
     </div>
   );
