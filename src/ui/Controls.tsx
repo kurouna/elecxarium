@@ -88,7 +88,7 @@ export function Controls() {
         <input
           type="range"
           min={1}
-          max={30}
+          max={60}
           value={speed}
           onChange={(e) => setSpeed(Number(e.target.value))}
           className="w-28 accent-accent"
