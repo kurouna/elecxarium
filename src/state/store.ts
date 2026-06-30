@@ -58,6 +58,8 @@ export interface MatchStore {
   setSeed: (seed: number) => void;
   setLockSeed: (v: boolean) => void;
   setHue: (id: string, hue: number) => void;
+  /** Persist all creature tabs (source/name/role/color) to this browser; restored on reload. */
+  saveCreatures: () => void;
   addEntry: () => void;
   removeEntry: (id: string) => void;
   startMatch: () => Promise<void>;
@@ -100,10 +102,44 @@ function parseRole(source: string): Role | undefined {
   return m ? (m[1] as Role) : undefined;
 }
 
-const initialEntries: EditorEntry[] = [
+const CREATURES_KEY = 'elecxarium:creatures:v1';
+
+const DEFAULT_ENTRIES: EditorEntry[] = [
   { id: 'sp-grazer', title: 'Grazer', source: DEFAULT_HERBIVORE, status: 'idle', error: undefined, role: 'herbivore', hue: 150 },
   { id: 'sp-stalker', title: 'Stalker', source: DEFAULT_CARNIVORE, status: 'idle', error: undefined, role: 'carnivore', hue: 330 },
 ];
+
+/** Restore creatures the user saved in this browser (Save button), else the defaults. */
+function loadSavedCreatures(): { entries: EditorEntry[]; activeId: string } | null {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(CREATURES_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as { activeId?: string; entries?: unknown };
+    if (!Array.isArray(data.entries) || data.entries.length === 0) return null;
+    const entries: EditorEntry[] = data.entries.map((c, i) => {
+      const e = (c ?? {}) as Partial<EditorEntry>;
+      const role: Role = e.role === 'carnivore' || e.role === 'plant' ? e.role : 'herbivore';
+      return {
+        id: typeof e.id === 'string' && e.id ? e.id : `sp-restored-${i}`,
+        title: typeof e.title === 'string' ? e.title : `Creature ${i + 1}`,
+        source: typeof e.source === 'string' ? e.source : '',
+        role,
+        hue: typeof e.hue === 'number' ? e.hue : 200,
+        status: 'idle',
+        error: undefined,
+      };
+    });
+    const activeId = entries.some((e) => e.id === data.activeId) ? String(data.activeId) : entries[0]!.id;
+    return { entries, activeId };
+  } catch {
+    return null;
+  }
+}
+
+const restored = loadSavedCreatures();
+const initialEntries: EditorEntry[] = restored?.entries ?? DEFAULT_ENTRIES;
+const initialActiveId: string = restored?.activeId ?? initialEntries[0]!.id;
 
 export const useMatch = create<MatchStore>((set, get) => {
   const clearTimer = (): void => {
@@ -173,7 +209,7 @@ export const useMatch = create<MatchStore>((set, get) => {
 
   return {
     entries: initialEntries,
-    activeId: initialEntries[0]!.id,
+    activeId: initialActiveId,
     running: false,
     speed: 12,
     seed: 1,
@@ -206,6 +242,20 @@ export const useMatch = create<MatchStore>((set, get) => {
     setLockSeed: (v) => set({ lockSeed: v }),
     setHue: (id, hue) =>
       set((s) => ({ entries: s.entries.map((e) => (e.id === id ? { ...e, hue } : e)) })),
+
+    saveCreatures: () => {
+      if (typeof localStorage === 'undefined') return;
+      try {
+        const { entries, activeId } = get();
+        const payload = {
+          activeId,
+          entries: entries.map((e) => ({ id: e.id, title: e.title, source: e.source, role: e.role, hue: e.hue })),
+        };
+        localStorage.setItem(CREATURES_KEY, JSON.stringify(payload));
+      } catch {
+        /* storage unavailable or over quota — ignore */
+      }
+    },
 
     addEntry: () => {
       entrySeq += 1;

@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react';
-import { Plus, X } from 'lucide-react';
+import { lazy, Suspense, useState } from 'react';
+import { Plus, Save, X } from 'lucide-react';
 import { TEMPLATES } from '@/templates';
 import { useMatch, type EntryStatus } from '@/state/store';
 import { cn } from './cn';
@@ -28,7 +28,15 @@ export function EditorPanel() {
   const addEntry = useMatch((s) => s.addEntry);
   const removeEntry = useMatch((s) => s.removeEntry);
   const setHue = useMatch((s) => s.setHue);
+  const saveCreatures = useMatch((s) => s.saveCreatures);
+  const [saved, setSaved] = useState(false);
   const active = entries.find((e) => e.id === activeId) ?? entries[0];
+
+  const onSave = (): void => {
+    saveCreatures();
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1500);
+  };
 
   return (
     <div className="flex h-full flex-col bg-surface/30">
@@ -118,6 +126,14 @@ export function EditorPanel() {
             ⚠ {active.error}
           </span>
         )}
+        <button
+          type="button"
+          onClick={onSave}
+          className="ml-auto flex items-center gap-1.5 rounded bg-surface-2 px-2.5 py-1 text-fg transition hover:brightness-125"
+          title="Save all creatures in this browser (restored when you reopen the app)"
+        >
+          <Save className="size-3.5" /> {saved ? 'Saved!' : 'Save'}
+        </button>
       </div>
 
       <div className="min-h-0 flex-1">
