@@ -18,19 +18,30 @@ export function buildGrid(
   width: number,
   height: number,
   cell: number,
+  reuse?: Grid,
 ): Grid {
   const c = Math.max(1, cell);
   const cols = Math.max(1, Math.ceil(width / c));
   const rows = Math.max(1, Math.ceil(height / c));
-  const buckets: number[][] = new Array(cols * rows);
-  for (let i = 0; i < buckets.length; i++) buckets[i] = [];
+  let grid: Grid;
+  if (reuse && reuse.cell === c && reuse.cols === cols && reuse.rows === rows) {
+    // Same dimensions as last tick: clear each bucket in place (keeps the array
+    // objects) instead of reallocating ~cols*rows arrays. Contents/order are
+    // rebuilt identically below, so this is behaviourally a no-op (determinism-safe).
+    grid = reuse;
+    for (let i = 0; i < grid.buckets.length; i++) grid.buckets[i]!.length = 0;
+  } else {
+    const buckets: number[][] = new Array(cols * rows);
+    for (let i = 0; i < buckets.length; i++) buckets[i] = [];
+    grid = { cell: c, cols, rows, buckets };
+  }
   for (let i = 0; i < positions.length; i++) {
     const p = positions[i]!;
     const cx = clampInt(Math.floor(p.x / c), 0, cols - 1);
     const cy = clampInt(Math.floor(p.y / c), 0, rows - 1);
-    buckets[cy * cols + cx]!.push(i);
+    grid.buckets[cy * cols + cx]!.push(i);
   }
-  return { cell: c, cols, rows, buckets };
+  return grid;
 }
 
 /**

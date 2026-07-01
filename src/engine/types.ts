@@ -8,6 +8,7 @@ import type {
 } from '@elecxarium/creature';
 import type { Config } from './config';
 import type { Rng } from './rng';
+import type { Grid } from './spatialGrid';
 
 export type { SensePayload };
 
@@ -106,6 +107,8 @@ export interface World {
   nextId: number;
   /** Visual events produced during the current tick (cleared at the start of each tick). */
   visualEvents: VisualEvent[];
+  /** Reusable spatial-index scratch: rebuilt every tick but memory reused (perf). */
+  grid?: Grid;
 }
 
 export type SpeciesSenses = {

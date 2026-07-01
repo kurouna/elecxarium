@@ -117,7 +117,15 @@ export function collectSenses(world: World): SpeciesSenses[] {
   const positions = refs.map((r) => r.pos);
   let maxSight = 40;
   for (const sp of world.species.values()) maxSight = Math.max(maxSight, sp.derived.sightRadius);
-  const grid = buildGrid(positions, cfg.world.width, cfg.world.height, Math.max(20, maxSight));
+  // Reuse the previous tick's grid storage when dimensions match (perf: avoids
+  // reallocating all bucket arrays each tick). Rebuilt contents are identical.
+  const grid = (world.grid = buildGrid(
+    positions,
+    cfg.world.width,
+    cfg.world.height,
+    Math.max(20, maxSight),
+    world.grid,
+  ));
 
   const bySpecies = new Map<SpeciesId, { id: OrganismId; payload: SensePayload }[]>();
   for (const sp of world.species.values()) bySpecies.set(sp.id, []);
