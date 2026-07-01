@@ -30,6 +30,11 @@ interface PieceInfo {
 const RING_R = 11;
 const RING_C = 2 * Math.PI * RING_R;
 const SIZE = 22;
+// Above this many animals, draw each creature as a single dot instead of the full
+// ~10-node sprite. At high population each creature is only a few px, so the detail
+// isn't perceptible, but node count drops ~10x — which is what removes the frame
+// drops with 3 species (per the rendering perf review).
+const LOD_THRESHOLD = 180;
 
 function Piece({ a, info, dim }: { a: RenderAnimal; info: PieceInfo | undefined; dim: boolean }) {
   const color = info?.color ?? '#ffffff';
@@ -88,12 +93,34 @@ export function Arena({ frame, species, width = 1000, height = 1000, effects = [
     () => frame.carcasses.map((c) => <circle key={c.id} cx={c.x} cy={c.y} r={4} fill="hsl(40 10% 60%)" opacity={0.4} />),
     [frame.carcasses],
   );
+  const lod = frame.animals.length > LOD_THRESHOLD;
   const pieces = useMemo(
     () =>
-      frame.animals.map((a) => (
-        <Piece key={a.id} a={a} info={lut.get(a.speciesId)} dim={highlightSpecies !== null && a.speciesId !== highlightSpecies} />
-      )),
-    [frame.animals, lut, highlightSpecies],
+      lod
+        ? frame.animals.map((a) => {
+            const dim = highlightSpecies !== null && a.speciesId !== highlightSpecies;
+            return (
+              <circle
+                key={a.id}
+                data-cid={a.id}
+                cx={a.x}
+                cy={a.y}
+                r={5.5}
+                fill={lut.get(a.speciesId)?.color ?? '#ffffff'}
+                opacity={dim ? 0.18 : 0.92}
+                style={{ cursor: 'pointer' }}
+              />
+            );
+          })
+        : frame.animals.map((a) => (
+            <Piece
+              key={a.id}
+              a={a}
+              info={lut.get(a.speciesId)}
+              dim={highlightSpecies !== null && a.speciesId !== highlightSpecies}
+            />
+          )),
+    [frame.animals, lut, highlightSpecies, lod],
   );
 
   const onPointerMove = (e: PointerEvent<SVGSVGElement>): void => {
