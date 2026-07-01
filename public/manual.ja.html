@@ -142,6 +142,75 @@ export default defineCreature&lt;Mem&gt;({
       <p>選択ヘルパ: <code>nearest(list, pred?)</code>, <code>farthest(list, pred?)</code>,
         <code>dist(a, b)</code>, <code>clampToWorld(pos, world)</code>。</p>
 
+      <h3>レシピ — <code>sense</code> の読み方と行動の選び方</h3>
+      <p>以下はすべて <code>think(sense, memory)</code> の中身です。ヘルパ（<code>move</code>, <code>moveToward</code>,
+        <code>eat</code>, <code>attack</code>, <code>reproduce</code>, <code>defend</code>, <code>nearest</code>,
+        <code>farthest</code>, <code>dist</code>）は <code>@elecxarium/creature</code> から import します。組み合わせて1体を作ります。</p>
+
+      <p><strong>1 — 自分の状態を読む（<code>sense.self</code>）</strong></p>
+      <pre><code>const me = sense.self;
+const hp = me.energy / me.energyMax;        // 0..1 — 体力の割合
+const aged = me.age / me.lifespan;          // 0..1 — 寿命までの近さ
+if (me.canReproduce &amp;&amp; hp &gt; 0.8) return reproduce();   // 満腹のときだけ繁殖
+// 他: me.position {x,y}、me.reach（攻撃/捕食の届く距離）、me.moveMax、me.sightRadius</code></pre>
+
+      <p><strong>2 — 周囲を見る（<code>sense.nearby</code>；各要素は <code>OrganismView</code>）</strong></p>
+      <pre><code>for (const o of sense.nearby) {
+  o.kind;        // 'animal' | 'plant' | 'carcass'
+  o.role;        // 'herbivore' | 'carnivore' | 'plant'（animal のみ）
+  o.distance;    // 自分からの距離（計算済み）
+  o.energyState; // 'high' | 'medium' | 'low'（正確なエネルギーは秘匿）
+  o.isOwn;       // 自分と同じ種か
+  o.position;    // { x, y }
+}</code></pre>
+
+      <p><strong>3 — 目的のものを探す（<code>nearest</code> / <code>farthest</code>）</strong></p>
+      <pre><code>const food     = nearest(sense.nearby, (o) =&gt; o.kind === 'plant' &amp;&amp; o.energyState !== 'low');
+const predator = nearest(sense.nearby, (o) =&gt; o.role === 'carnivore' &amp;&amp; o.isAlive);
+const weakPrey = nearest(sense.nearby, (o) =&gt; o.role === 'herbivore' &amp;&amp; o.energyState === 'low');
+// 最も近い一致を返す（見えなければ undefined）</code></pre>
+
+      <p><strong>4 — 目標へ到達：遠ければ移動、隣接すれば実行（<code>sense.self.reach</code>）</strong></p>
+      <pre><code>if (food) {
+  return food.distance &lt;= sense.self.reach ? eat(food.id) : moveToward(food.position);
+}
+// 肉食版: prey.distance &lt;= sense.self.reach ? attack(prey.id) : moveToward(prey.position)</code></pre>
+
+      <p><strong>5 — 捕食者から逃げる（座標のベクトル計算）</strong></p>
+      <pre><code>if (predator &amp;&amp; predator.distance &lt; sense.self.sightRadius * 0.6) {
+  if (predator.distance &lt;= sense.self.reach) return defend();   // 追い詰められたら防御
+  const me = sense.self.position, p = predator.position;
+  return moveToward({ x: me.x + (me.x - p.x), y: me.y + (me.y - p.y) });  // 反対方向へ逃走
+}</code></pre>
+
+      <p><strong>6 — 直前の出来事に反応する（<code>sense.events</code>）</strong></p>
+      <pre><code>const hit = sense.events.find((e) =&gt; e.type === 'attacked');
+if (hit &amp;&amp; 'byId' in hit) {          // hit.byId = 攻撃者、hit.damage = 受けたダメージ
+  const foe = sense.nearby.find((o) =&gt; o.id === hit.byId);
+  if (foe) return moveToward({ x: sense.self.position.x * 2 - foe.position.x,
+                               y: sense.self.position.y * 2 - foe.position.y });
+}
+// 他のイベント: {type:'ateOk',gained} {type:'eatFailed',reason} {type:'born'} {type:'reproduced',childId}</code></pre>
+
+      <p><strong>7 — ティックを跨いで覚える（型付き <code>memory</code>）</strong></p>
+      <pre><code>interface Mem { roam: { x: number; y: number } | null }
+
+export default defineCreature&lt;Mem&gt;({
+  meta: { name: 'Wanderer', role: 'herbivore' },
+  traits: { maxEnergy: 25, eyesight: 25, speed: 20, attack: 0, defense: 10, eatingSpeed: 20, camouflage: 0 },
+  initMemory: () =&gt; ({ roam: null }),
+  think(sense, mem) {
+    // ランダムな目的地を決め、着くまで覚える（Math.random ではなく sense.random）
+    if (!mem.roam || dist(sense.self.position, mem.roam) &lt; 25) {
+      mem.roam = { x: sense.random() * sense.world.width, y: sense.random() * sense.world.height };
+    }
+    return moveToward(mem.roam);
+  },
+});</code></pre>
+
+      <p class="muted">エディタは補完と型チェックが効きます（<code>sense.self.</code> と打つと全フィールドが出ます）。
+        左上の <strong>Template</strong> を挿入すると完全な動作例が入ります。</p>
+
       <h2>5. 世界のルール</h2>
       <ul>
         <li><strong>エネルギー</strong>は毎ティック減少（大型・高速・移動が多いほど多く）。0で死亡。</li>
