@@ -22,8 +22,14 @@ export interface Config {
     /** Per-tick maintenance subtracted from a plant's photosynthesis. */
     upkeep: number;
     /** Carrying capacity: a role:'plant' species stops reproducing past this many alive
-     * (so a naive plant can't carpet the world / stall the renderer). */
+     * (final backstop; density feedback below should equilibrate first). */
     speciesCap: number;
+    /** Local-density photosynthesis feedback (net-surplus based). Crowded plants shade
+     * each other: photo falls toward (upkeep + surplusFloor), so net gain shrinks to
+     * surplusFloor and reproduction slows. See GOAL.md / docs/SPEC.md §13. */
+    crowdRadius: number;
+    crowdK: number;
+    surplusFloor: number;
   };
   compute: { baseMs: number; perCreatureMs: number; maxMs: number; strikesMax: number };
   scoring: { wSurvival: number; wPopIntegral: number; wBiomass: number };
@@ -49,6 +55,9 @@ export const DEFAULT_CONFIG: Config = {
     photoPerPoint: 0.03,
     upkeep: 0.12,
     speciesCap: 150,
+    crowdRadius: 50,
+    crowdK: 0.4,
+    surplusFloor: 0,
   },
   compute: { baseMs: 6, perCreatureMs: 1.5, maxMs: 120, strikesMax: 3 },
   scoring: { wSurvival: 1e9, wPopIntegral: 1, wBiomass: 1e-3 },

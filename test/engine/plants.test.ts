@@ -102,4 +102,19 @@ describe('programmable plants (role:plant)', () => {
     expect(sp.births).toBe(0);
     expect(sp.alive).toBe(3);
   });
+
+  it('crowded plants photosynthesise less than an isolated one, but do not starve (density feedback)', () => {
+    const w = arena([sdef('p', 'plant', { maxEnergy: 40, eatingSpeed: 50 })]);
+    const sp = w.species.get('p')!;
+    const lone = addAnimal(w, sp, { x: 100, y: 100 }); // no neighbours within crowdRadius
+    const cluster = Array.from({ length: 6 }, (_, i) =>
+      addAnimal(w, sp, { x: 900 + (i % 3) * 4, y: 900 + Math.floor(i / 3) * 4 }),
+    ); // tight clump, all within crowdRadius of each other
+    for (const a of [lone, ...cluster]) a.energy = 20;
+    resolveTick(w, new Map());
+    const loneGain = lone.energy - 20;
+    const crowdedGain = cluster[0]!.energy - 20;
+    expect(crowdedGain).toBeLessThan(loneGain); // local crowding reduces net photosynthesis
+    expect(cluster[0]!.energy).toBeGreaterThanOrEqual(20); // net-surplus floor: crowding never starves to death
+  });
 });

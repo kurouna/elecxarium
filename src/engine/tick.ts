@@ -1,6 +1,7 @@
 import type { Action, Vec2 } from '@elecxarium/creature';
 import { hashSeed, makeRng, nextRange, shuffle } from './rng';
 import { addAnimal, addCarcass, spawnPlants } from './world';
+import { buildGrid, queryRadius } from './spatialGrid';
 import type { Animal, OrganismId, World } from './types';
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -184,12 +185,47 @@ export function resolveTick(world: World, actions: ReadonlyMap<OrganismId, Actio
     else if (act.kind === 'reproduce') resolveReproduce(world, a);
   }
 
+  // Local plant crowding for the net-surplus density feedback: count each plant's
+  // plant-role neighbours from the tick-start `order` snapshot (so this tick's newborns
+  // are counted from next tick), via a small plant-only spatial index. See GOAL.md.
+  const plantList = order.filter((a) => a.role === 'plant');
+  const plantCrowd = new Map<OrganismId, number>();
+  if (plantList.length > 1) {
+    const R = cfg.plants.crowdRadius;
+    const pgrid = buildGrid(
+      plantList.map((p) => p.pos),
+      cfg.world.width,
+      cfg.world.height,
+      Math.max(20, R),
+    );
+    const cand: number[] = [];
+    for (let i = 0; i < plantList.length; i++) {
+      const p = plantList[i]!;
+      cand.length = 0;
+      queryRadius(pgrid, p.pos.x, p.pos.y, R, cand);
+      let n = 0;
+      for (const idx of cand) {
+        if (idx === i) continue;
+        const q = plantList[idx]!;
+        const dx = q.pos.x - p.pos.x;
+        const dy = q.pos.y - p.pos.y;
+        if (dx * dx + dy * dy <= R * R) n++;
+      }
+      plantCrowd.set(p.id, n);
+    }
+  }
+
   // metabolism / photosynthesis + aging + cooldowns
   for (const a of order) {
     const sp = world.species.get(a.speciesId)!;
     if (a.role === 'plant') {
-      // Photosynthesis: passive income scaled by eatingSpeed, minus light upkeep.
-      const photo = cfg.plants.photoBase + sp.traits.eatingSpeed * cfg.plants.photoPerPoint;
+      // Photosynthesis with net-surplus density feedback: crowded plants shade each other,
+      // so income falls toward (upkeep + surplusFloor) — the net gain shrinks to
+      // surplusFloor when dense, slowing reproduction rather than starving. See GOAL.md.
+      const photo0 = cfg.plants.photoBase + sp.traits.eatingSpeed * cfg.plants.photoPerPoint;
+      const n = plantCrowd.get(a.id) ?? 0;
+      const photoMin = cfg.plants.upkeep + cfg.plants.surplusFloor;
+      const photo = Math.max(photoMin, photo0 * (1 - cfg.plants.crowdK * n));
       a.energy = Math.min(sp.derived.energyMax, a.energy + photo - cfg.plants.upkeep);
     } else {
       const metab =
