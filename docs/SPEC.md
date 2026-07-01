@@ -554,9 +554,12 @@ export const CONFIG = {
   // 密集すると純益が SURPLUS_FLOOR(=0) まで下がり繁殖が鈍る → 素朴植物も SPECIES_CAP 未満で均衡(cap は保険)。
   plants:  { PLANT_TARGET: 155, PLANT_GROWTH: 0.9, PLANT_MAX: 80, RESPAWN_EVERY: 6, RESPAWN_BATCH: 14,
              PHOTO_BASE: 0.15, PHOTO_PER_POINT: 0.03, UPKEEP: 0.12,
-             CROWD_RADIUS: 50, CROWD_K: 0.4, SURPLUS_FLOOR: 0, SPECIES_CAP: 150 },
-  // バランスは scripts/sim.ts で計測・調整。2種(Grazer vs Stalker)は ~57/43 で両者が高頻度で生存。
-  // 3種(Bloom/Grazer/Stalker)は密度FB導入後 40 シードで生存率 100/83/60%・both-extinct 0 の安定共存。
+             CROWD_RADIUS: 50, CROWD_K: 0.45, SURPLUS_FLOOR: 0, SPECIES_CAP: 150 },
+  // バランスは scripts/sim.ts で計測・調整。既定ロスターは3種(Bloom/Grazer/Stalker)。
+  // 3種は CROWD_K=0.45＋両テンプレの繁殖ゲートを 0.9(満腹時のみ=慎重な捕食者/草食)に上げ、
+  //   50 シードで wins 38/62/0%・生存率 100/98/74%・both-extinct 0 の安定共存（植物支配 100%→38% に解消）。
+  // 頂点の肉食は個体数が最も薄く score 首位は稀だが、捕食は活発(≈94 kills/seed)で 74% のマッチに存続。
+  // 注: 慎重繁殖だと2種(Grazer vs Stalker)は肉食が獲物を狩り尽くせず score 首位を取れない→既定を3種にした理由。
   // Moss(素朴) は avgPeak≈112、eatingSpeed 全振り植物も≈144 と、いずれも SPECIES_CAP(150) 未満で密度均衡。
   // 鍵: 草食は「最寄りの植物」ではなく「実入りのある(=energyState!=='low')植物」を採り、枯れたら移動して採餌する
   // こと。これを怠ると植物に張り付き(camping)→獲物が密集→肉食が過剰捕食して共倒れになる（v0.3 で判明・修正）。

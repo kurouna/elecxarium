@@ -56,7 +56,7 @@ export const DEFAULT_CONFIG: Config = {
     upkeep: 0.12,
     speciesCap: 150,
     crowdRadius: 50,
-    crowdK: 0.4,
+    crowdK: 0.45,
     surplusFloor: 0,
   },
   compute: { baseMs: 6, perCreatureMs: 1.5, maxMs: 120, strikesMax: 3 },

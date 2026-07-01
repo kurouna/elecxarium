@@ -49,7 +49,7 @@ export default defineCreature<Mem>({
       }
     }
 
-    if (self.canReproduce && self.energy > self.energyMax * 0.8) return { kind: 'reproduce' };
+    if (self.canReproduce && self.energy > self.energyMax * 0.9) return { kind: 'reproduce' };
 
     // Forage smartly: head for the nearest plant that's actually worth eating, and
     // once a plant is grazed down ('low'), move on to a fuller one instead of camping
@@ -87,8 +87,9 @@ export default defineCreature<Mem>({
     const carcass = nearest(sense.nearby, (o) => o.kind === 'carcass');
     if (carcass && carcass.distance <= self.reach) return eat(carcass.id);
 
-    // Breed when well-fed — don't hunt forever, grow the pack.
-    if (self.canReproduce && self.energy > self.energyMax * 0.8) return { kind: 'reproduce' };
+    // Breed when well-fed — don't hunt forever, grow the pack. A prudent predator breeds
+    // only when nearly full, so the pack stays sustainable and doesn't overshoot its prey.
+    if (self.canReproduce && self.energy > self.energyMax * 0.9) return { kind: 'reproduce' };
 
     const prey =
       nearest(sense.nearby, (o) => o.role === 'herbivore' && o.isAlive && o.energyState === 'low') ??
@@ -208,3 +209,4 @@ export const TEMPLATES: CreatureTemplate[] = [
 
 export const DEFAULT_HERBIVORE = GRAZER;
 export const DEFAULT_CARNIVORE = STALKER;
+export const DEFAULT_PLANT = PLANT;

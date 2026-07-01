@@ -9,7 +9,7 @@ import { stepWithBrains } from '@/match/runMatch';
 import { decodeReplay, encodeReplay } from '@/match/replayCodec';
 import { runTournament, type Standing, type TournamentHost } from '@/match/tournament';
 import type { ArenaSpecies } from '@/render/Arena';
-import { DEFAULT_CARNIVORE, DEFAULT_HERBIVORE } from '@/templates';
+import { DEFAULT_CARNIVORE, DEFAULT_HERBIVORE, DEFAULT_PLANT } from '@/templates';
 
 export type EntryStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -105,6 +105,7 @@ function parseRole(source: string): Role | undefined {
 const CREATURES_KEY = 'elecxarium:creatures:v1';
 
 const DEFAULT_ENTRIES: EditorEntry[] = [
+  { id: 'sp-bloom', title: 'Bloom', source: DEFAULT_PLANT, status: 'idle', error: undefined, role: 'plant', hue: 100 },
   { id: 'sp-grazer', title: 'Grazer', source: DEFAULT_HERBIVORE, status: 'idle', error: undefined, role: 'herbivore', hue: 150 },
   { id: 'sp-stalker', title: 'Stalker', source: DEFAULT_CARNIVORE, status: 'idle', error: undefined, role: 'carnivore', hue: 330 },
 ];
