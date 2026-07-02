@@ -104,6 +104,10 @@ export interface World {
   plants: Map<OrganismId, Plant>;
   carcasses: Map<OrganismId, Carcass>;
   species: Map<SpeciesId, SpeciesRuntime>;
+  /** True if any species has role:'plant'. When set, the player plant is the producer and
+   * the auto-spawned environmental-plant field is suppressed (see config.plants.targetWithPlayer).
+   * Fixed at world creation. */
+  hasPlantSpecies: boolean;
   nextId: number;
   /** Visual events produced during the current tick (cleared at the start of each tick). */
   visualEvents: VisualEvent[];

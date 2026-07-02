@@ -20,7 +20,22 @@ const seeds = Number(flag('seeds') ?? '24');
 const ticks = Number(flag('ticks') ?? String(DEFAULT_CONFIG.match.matchTicks));
 const verbose = process.argv.includes('--verbose');
 
-const config: Config = { ...DEFAULT_CONFIG, match: { ...DEFAULT_CONFIG.match, matchTicks: ticks } };
+// Deep-clone so --set overrides never mutate the shared DEFAULT_CONFIG (nested objects).
+const config: Config = JSON.parse(JSON.stringify(DEFAULT_CONFIG)) as Config;
+config.match.matchTicks = ticks;
+
+// Config sweeping: `--set=plants.seedSpacing=90 --set=plants.photoBase=0.3` (repeatable).
+for (const arg of process.argv) {
+  if (!arg.startsWith('--set=')) continue;
+  const body = arg.slice('--set='.length);
+  const eq = body.indexOf('=');
+  if (eq < 0) continue;
+  const path = body.slice(0, eq).split('.');
+  const value = Number(body.slice(eq + 1));
+  let obj: Record<string, unknown> = config as unknown as Record<string, unknown>;
+  for (let i = 0; i < path.length - 1; i++) obj = obj[path[i]!] as Record<string, unknown>;
+  obj[path[path.length - 1]!] = value;
+}
 
 // Adversarial / stress creatures for balance testing (not shipped in the UI templates).
 const EXTRA: Record<string, string> = {

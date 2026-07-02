@@ -1,8 +1,41 @@
 import type { Action, Vec2 } from '@elecxarium/creature';
 import { hashSeed, makeRng, nextRange, shuffle } from './rng';
 import { addAnimal, addCarcass, spawnPlants } from './world';
-import { buildGrid, queryRadius } from './spatialGrid';
-import type { Animal, OrganismId, World } from './types';
+import { buildGrid, queryRadius, type Grid } from './spatialGrid';
+import type { Animal, OrganismId, SpeciesId, World } from './types';
+
+const TWO_PI = Math.PI * 2;
+
+/** Tick-start plant snapshot: drives local-shading crowd counts and seed spatial exclusion. */
+interface PlantField {
+  grid: Grid | null;
+  list: Animal[];
+  /** Seeds placed earlier this tick (not yet in `grid`) — two seeds mustn't stack either. */
+  newSeeds: { x: number; y: number; speciesId: SpeciesId }[];
+}
+
+/** True if a same-species plant already sits within `spacing` of (x,y). */
+function plantSpotOccupied(x: number, y: number, speciesId: SpeciesId, spacing: number, field: PlantField): boolean {
+  const r2 = spacing * spacing;
+  if (field.grid) {
+    const cand: number[] = [];
+    queryRadius(field.grid, x, y, spacing, cand);
+    for (const idx of cand) {
+      const q = field.list[idx]!;
+      if (q.speciesId !== speciesId) continue;
+      const dx = q.pos.x - x;
+      const dy = q.pos.y - y;
+      if (dx * dx + dy * dy < r2) return true;
+    }
+  }
+  for (const ns of field.newSeeds) {
+    if (ns.speciesId !== speciesId) continue;
+    const dx = ns.x - x;
+    const dy = ns.y - y;
+    if (dx * dx + dy * dy < r2) return true;
+  }
+  return false;
+}
 
 function clamp(v: number, lo: number, hi: number): number {
   return v < lo ? lo : v > hi ? hi : v;
@@ -121,30 +154,49 @@ function resolveEat(world: World, eater: Animal, targetId: OrganismId): void {
   if (carcass.energy <= 0) world.carcasses.delete(carcass.id);
 }
 
-function resolveReproduce(world: World, parent: Animal): void {
+function resolveReproduce(world: World, parent: Animal, field: PlantField): void {
   const sp = world.species.get(parent.speciesId)!;
   const cfg = world.config;
   if (parent.reproduceCooldown > 0) return;
   if (parent.energy < sp.derived.energyMax * cfg.repro.threshold) return;
-  // Plant carrying capacity: prevents a naive/aggressive plant from carpeting the
-  // world (which would balloon per-tick cost and the SVG node count).
-  if (parent.role === 'plant' && sp.alive >= cfg.plants.speciesCap) return;
+
+  let childX: number;
+  let childY: number;
+  if (parent.role === 'plant') {
+    // Hard backstop against a pathological plant carpeting the world (SVG node / per-tick
+    // cost blowup); the real limiter below is spatial (seeds need open ground).
+    if (sp.alive >= cfg.plants.speciesCap) return;
+    // Terrarium-style dispersal: fling the seed away from the parent and let it take root
+    // only on open ground (no same-species plant within seedSpacing). A blocked seed costs
+    // the parent nothing and it retries next tick — so plants colonise outward and self-limit
+    // at a spatial carrying capacity instead of piling up on one spot.
+    let placed = false;
+    childX = parent.pos.x;
+    childY = parent.pos.y;
+    for (let attempt = 0; attempt < cfg.plants.seedAttempts; attempt++) {
+      const ang = nextRange(world.rng, 0, TWO_PI);
+      const d = cfg.plants.seedSpacing + nextRange(world.rng, 0, cfg.plants.seedSpread);
+      const cx = clamp(parent.pos.x + Math.cos(ang) * d, 0, cfg.world.width);
+      const cy = clamp(parent.pos.y + Math.sin(ang) * d, 0, cfg.world.height);
+      if (!plantSpotOccupied(cx, cy, parent.speciesId, cfg.plants.seedSpacing, field)) {
+        childX = cx;
+        childY = cy;
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) return; // hemmed in by its own kind — no open ground, no offspring, no cost
+  } else {
+    // Animals: offspring appears next to the parent.
+    childX = clamp(parent.pos.x + nextRange(world.rng, -10, 10), 0, cfg.world.width);
+    childY = clamp(parent.pos.y + nextRange(world.rng, -10, 10), 0, cfg.world.height);
+  }
 
   const cost = sp.derived.energyMax * cfg.repro.cost;
   parent.energy -= cost;
   parent.reproduceCooldown = cfg.repro.cooldown;
-  const childEnergy = cost * (1 - cfg.repro.tax);
-  const ox = nextRange(world.rng, -10, 10);
-  const oy = nextRange(world.rng, -10, 10);
-  const child = addAnimal(
-    world,
-    sp,
-    {
-      x: clamp(parent.pos.x + ox, 0, cfg.world.width),
-      y: clamp(parent.pos.y + oy, 0, cfg.world.height),
-    },
-    childEnergy,
-  );
+  const child = addAnimal(world, sp, { x: childX, y: childY }, cost * (1 - cfg.repro.tax));
+  if (parent.role === 'plant') field.newSeeds.push({ x: childX, y: childY, speciesId: parent.speciesId });
   sp.births++;
   parent.events.push({ type: 'reproduced', childId: child.id });
   child.events.push({ type: 'born' });
@@ -167,37 +219,23 @@ export function resolveTick(world: World, actions: ReadonlyMap<OrganismId, Actio
     a.lastMoveDist = 0;
   }
 
-  // Phase A — movement & defend
-  for (const a of order) {
-    const act = actions.get(a.id);
-    if (!act) continue;
-    if (act.kind === 'move' && a.role !== 'plant') applyMove(a, act.to, world); // plants are rooted
-    else if (act.kind === 'defend') a.defending = true;
-  }
-
-  // Phase B — interactions (dead-but-not-removed animals don't act)
-  for (const a of order) {
-    if (a.energy <= 0) continue;
-    const act = actions.get(a.id);
-    if (!act) continue;
-    if (act.kind === 'attack') resolveAttack(world, a, act.targetId);
-    else if (act.kind === 'eat') resolveEat(world, a, act.targetId);
-    else if (act.kind === 'reproduce') resolveReproduce(world, a);
-  }
-
-  // Local plant crowding for the net-surplus density feedback: count each plant's
-  // plant-role neighbours from the tick-start `order` snapshot (so this tick's newborns
-  // are counted from next tick), via a small plant-only spatial index. See GOAL.md.
+  // Plant field (tick-start snapshot): rooted plants don't move, so one snapshot serves the
+  // whole tick. It powers the local-shading crowd count (radius crowdRadius) AND seed spatial
+  // exclusion at reproduction (radius seedSpacing); newSeeds tracks this tick's own births.
   const plantList = order.filter((a) => a.role === 'plant');
+  const plantCell = Math.max(20, cfg.plants.crowdRadius, cfg.plants.seedSpacing);
+  const pgrid =
+    plantList.length > 0
+      ? buildGrid(
+          plantList.map((p) => p.pos),
+          cfg.world.width,
+          cfg.world.height,
+          plantCell,
+        )
+      : null;
   const plantCrowd = new Map<OrganismId, number>();
-  if (plantList.length > 1) {
+  if (pgrid && plantList.length > 1) {
     const R = cfg.plants.crowdRadius;
-    const pgrid = buildGrid(
-      plantList.map((p) => p.pos),
-      cfg.world.width,
-      cfg.world.height,
-      Math.max(20, R),
-    );
     const cand: number[] = [];
     for (let i = 0; i < plantList.length; i++) {
       const p = plantList[i]!;
@@ -213,6 +251,25 @@ export function resolveTick(world: World, actions: ReadonlyMap<OrganismId, Actio
       }
       plantCrowd.set(p.id, n);
     }
+  }
+  const field: PlantField = { grid: pgrid, list: plantList, newSeeds: [] };
+
+  // Phase A — movement & defend
+  for (const a of order) {
+    const act = actions.get(a.id);
+    if (!act) continue;
+    if (act.kind === 'move' && a.role !== 'plant') applyMove(a, act.to, world); // plants are rooted
+    else if (act.kind === 'defend') a.defending = true;
+  }
+
+  // Phase B — interactions (dead-but-not-removed animals don't act)
+  for (const a of order) {
+    if (a.energy <= 0) continue;
+    const act = actions.get(a.id);
+    if (!act) continue;
+    if (act.kind === 'attack') resolveAttack(world, a, act.targetId);
+    else if (act.kind === 'eat') resolveEat(world, a, act.targetId);
+    else if (act.kind === 'reproduce') resolveReproduce(world, a, field);
   }
 
   // metabolism / photosynthesis + aging + cooldowns
@@ -264,9 +321,10 @@ export function resolveTick(world: World, actions: ReadonlyMap<OrganismId, Actio
     if (c.decay <= 0 || c.energy <= 0) world.carcasses.delete(c.id);
   }
 
-  // plant respawn toward target
-  if (world.tick % cfg.plants.respawnEvery === 0 && world.plants.size < cfg.plants.target) {
-    const need = Math.min(cfg.plants.respawnBatch, cfg.plants.target - world.plants.size);
+  // Environmental-plant respawn — suppressed when a player plant is the producer (see createWorld).
+  const envTarget = world.hasPlantSpecies ? cfg.plants.targetWithPlayer : cfg.plants.target;
+  if (world.tick % cfg.plants.respawnEvery === 0 && world.plants.size < envTarget) {
+    const need = Math.min(cfg.plants.respawnBatch, envTarget - world.plants.size);
     spawnPlants(world, need);
   }
 

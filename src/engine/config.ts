@@ -11,6 +11,10 @@ export interface Config {
   carcass: { residual: number; decayTicks: number };
   plants: {
     target: number;
+    /** Env-plant target when a player plant (role:'plant') is in play. The player plant is
+     * the producer then, so environmental plants drop (0 = off). Env plants remain the food
+     * base only for matches with no plant player. */
+    targetWithPlayer: number;
     growth: number;
     max: number;
     startEnergy: number;
@@ -30,6 +34,13 @@ export interface Config {
     crowdRadius: number;
     crowdK: number;
     surplusFloor: number;
+    /** Terrarium-style seed dispersal + spatial exclusion. A plant's offspring is placed at
+     * distance [seedSpacing, seedSpacing+seedSpread] in a random direction and only takes root
+     * if no same-species plant sits within seedSpacing of it — plants colonise open ground and
+     * can't stack. seedAttempts candidate spots are tried before the seed is abandoned. */
+    seedSpacing: number;
+    seedSpread: number;
+    seedAttempts: number;
   };
   compute: { baseMs: number; perCreatureMs: number; maxMs: number; strikesMax: number };
   scoring: { wSurvival: number; wPopIntegral: number; wBiomass: number };
@@ -46,18 +57,22 @@ export const DEFAULT_CONFIG: Config = {
   carcass: { residual: 0.92, decayTicks: 80 },
   plants: {
     target: 155,
+    targetWithPlayer: 0,
     growth: 0.9,
     max: 80,
     startEnergy: 30,
     respawnEvery: 6,
     respawnBatch: 14,
-    photoBase: 0.15,
-    photoPerPoint: 0.03,
+    photoBase: 0.4,
+    photoPerPoint: 0.05,
     upkeep: 0.12,
     speciesCap: 150,
     crowdRadius: 50,
     crowdK: 0.45,
     surplusFloor: 0,
+    seedSpacing: 60,
+    seedSpread: 100,
+    seedAttempts: 5,
   },
   compute: { baseMs: 6, perCreatureMs: 1.5, maxMs: 120, strikesMax: 3 },
   scoring: { wSurvival: 1e9, wPopIntegral: 1, wBiomass: 1e-3 },

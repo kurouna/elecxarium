@@ -43,6 +43,7 @@ export function createWorld(opts: CreateWorldOptions): World {
     plants: new Map(),
     carcasses: new Map(),
     species: new Map(),
+    hasPlantSpecies: opts.species.some((s) => s.role === 'plant'),
     nextId: 1,
     visualEvents: [],
   };
@@ -69,7 +70,12 @@ export function createWorld(opts: CreateWorldOptions): World {
   });
 
   spawnInitial(world);
-  spawnPlants(world, config.plants.target);
+  // The auto-spawned environmental-plant field is the food base ONLY when no player plant
+  // is in play. If a role:'plant' species exists it IS the producer (it seeds and colonises
+  // the world), so environmental plants drop to targetWithPlayer (0 by default) — the real
+  // Terrarium has no separate environmental plants; plants are creatures.
+  const envTarget = world.hasPlantSpecies ? config.plants.targetWithPlayer : config.plants.target;
+  if (envTarget > 0) spawnPlants(world, envTarget);
   return world;
 }
 

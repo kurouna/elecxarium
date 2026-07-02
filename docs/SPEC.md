@@ -549,22 +549,30 @@ export const CONFIG = {
   repro:   { REPRO_THRESHOLD: 0.6, REPRO_COST: 0.5, REPRO_TAX: 0.1, REPRO_COOLDOWN: 20 },
   life:    { LIFESPAN_BASE: 1500, LIFESPAN_JITTER: 300 },
   carcass: { RESIDUAL: 0.92, DECAY_TICKS: 80 },
-  // 光合成: photo0 = PHOTO_BASE + eatingSpeed*PHOTO_PER_POINT。局所密度フィードバック(純収支ベース):
-  // photo = max(UPKEEP+SURPLUS_FLOOR, photo0*(1-CROWD_K*n))、n = 半径 CROWD_RADIUS 内の他 role:'plant' 個体数。
-  // 密集すると純益が SURPLUS_FLOOR(=0) まで下がり繁殖が鈍る → 素朴植物も SPECIES_CAP 未満で均衡(cap は保険)。
-  plants:  { PLANT_TARGET: 155, PLANT_GROWTH: 0.9, PLANT_MAX: 80, RESPAWN_EVERY: 6, RESPAWN_BATCH: 14,
-             PHOTO_BASE: 0.15, PHOTO_PER_POINT: 0.03, UPKEEP: 0.12,
-             CROWD_RADIUS: 50, CROWD_K: 0.45, SURPLUS_FLOOR: 0, SPECIES_CAP: 150 },
-  // バランスは scripts/sim.ts で計測・調整。既定ロスターは3種(Bloom/Grazer/Stalker)。
-  // 3種は CROWD_K=0.45＋両テンプレの繁殖ゲートを 0.9(満腹時のみ=慎重な捕食者/草食)に上げ、
-  //   50 シードで wins 38/62/0%・生存率 100/98/74%・both-extinct 0 の安定共存（植物支配 100%→38% に解消）。
-  // 頂点の肉食は個体数が最も薄く score 首位は稀だが、捕食は活発(≈94 kills/seed)で 74% のマッチに存続。
-  // 注: 慎重繁殖だと2種(Grazer vs Stalker)は肉食が獲物を狩り尽くせず score 首位を取れない→既定を3種にした理由。
-  // Moss(素朴) は avgPeak≈112、eatingSpeed 全振り植物も≈144 と、いずれも SPECIES_CAP(150) 未満で密度均衡。
-  // 鍵: 草食は「最寄りの植物」ではなく「実入りのある(=energyState!=='low')植物」を採り、枯れたら移動して採餌する
-  // こと。これを怠ると植物に張り付き(camping)→獲物が密集→肉食が過剰捕食して共倒れになる（v0.3 で判明・修正）。
-  // 初期エネルギー = energyMax*0.7、全種を世界全体に一様散布（v0.3 で世界4倍・個体数増）
+  // 植物の自己制限は本家Terrarium流の3機構:
+  //  (1) 光合成 photo0 = PHOTO_BASE + eatingSpeed*PHOTO_PER_POINT、局所シェーディング(純収支):
+  //      photo = max(UPKEEP+SURPLUS_FLOOR, photo0*(1-CROWD_K*n))、n = 半径 CROWD_RADIUS 内の他植物数。
+  //  (2) 種子散布＋空間排他: 子は親から距離[SEED_SPACING, +SEED_SPREAD]のランダム方向へ置かれ、同種植物が
+  //      SEED_SPACING 内に居ない(=空き地)ときだけ発芽(SEED_ATTEMPTS 回試行)。→植物は空き地へコロニー化し、
+  //      重なれず、空間的に頭打ち。SPECIES_CAP は最終保険。
+  //  (3) TARGET_WITH_PLAYER: 植物プレイヤーが居る対戦では自然発生植物を止める(=0)。本家に自然発生植物は無く
+  //      植物"生物"が唯一の生産者。植物不在の対戦(例 Grazer vs Stalker)のみ PLANT_TARGET の自然発生餌を維持。
+  plants:  { PLANT_TARGET: 155, TARGET_WITH_PLAYER: 0, PLANT_GROWTH: 0.9, PLANT_MAX: 80,
+             RESPAWN_EVERY: 6, RESPAWN_BATCH: 14, PHOTO_BASE: 0.4, PHOTO_PER_POINT: 0.05, UPKEEP: 0.12,
+             CROWD_RADIUS: 50, CROWD_K: 0.45, SURPLUS_FLOOR: 0, SPECIES_CAP: 150,
+             SEED_SPACING: 60, SEED_SPREAD: 100, SEED_ATTEMPTS: 5 },
+  // バランスは scripts/sim.ts で計測。既定ロスターは3種(Bloom/Grazer/Stalker)。活力ある植物(高PHOTO)＋種子散布で
+  //   植物が世界をコロニー化→草食を支え→肉食に十分な獲物。8シード2000tで3種すべて生存8/8・both-extinct 0・
+  //   肉食 avgKills≈149/seed・avgFinal≈20 の頑健な共存(30シード3000tでも肉食生存 25/30)。慎重繁殖ゲート0.9も維持。
+  // 重要な発見: 存続する強い肉食は「大量の獲物(~150-200草食)」を要し、それには~150植物→合計~400個体が必要。
+  //   エンジンは余裕(ヘッドレス~600tick/s)だが SVG 描画が律速だったため、生物描画を Canvas に移行
+  //   (src/render/Arena.tsx: 生物はスプライトで Canvas 描画、背景と一時エフェクトのみ薄い SVG 層)→~400個体で~37tick/s。
+  // 鍵: 草食は「実入りのある(energyState!=='low')植物」を採り、枯れたら移動(camping回避)。
+  // 初期エネルギー = energyMax*0.7、全種を世界全体に一様散布。
   compute: { COMPUTE_BASE_MS: 6, COMPUTE_PER_CREATURE_MS: 1.5, COMPUTE_MAX_MS: 120, STRIKES_MAX: 3 },
+  // score = 生存×W_SURVIVAL + popIntegral + biomass×W_BIOMASS。ただし UI リーダーボードは本家Terrarium同様
+  // 栄養段階別に順位付け(scoring.ts の rankInRole)—肉食は肉食同士で競い、植物と個体数を直接比較しない。
+  // この weight は全体順位＋「どの種が最も繁栄したか」の生態系メトリクス(sim / balance テスト)用。
   scoring: { W_SURVIVAL: 1e9, W_POP_INTEGRAL: 1, W_BIOMASS: 1e-3 },
 } as const;
 ```
