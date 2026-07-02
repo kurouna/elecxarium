@@ -61,19 +61,21 @@ export async function runTournament(
     }
 
     const scores = computeScores(world);
+    // Per trophic type (Terrarium-style): a "win" is being the surviving champion of your
+    // own role, so a carnivore competes against carnivores — never against a plant's headcount.
     const ranking: RoundRanking[] = scores.map((s) => ({
       speciesId: s.speciesId,
       name: s.name,
-      rank: s.rank,
+      rank: s.rankInRole,
       score: s.score,
       alive: s.alive,
     }));
     for (const s of scores) {
       const a = agg.get(s.speciesId);
       if (!a) continue;
-      a.rankSum += s.rank;
+      a.rankSum += s.rankInRole;
       a.scoreSum += s.score;
-      if (s.rank === 1 && !s.disqualified) a.wins += 1;
+      if (s.rankInRole === 1 && !s.disqualified && s.alive > 0) a.wins += 1;
     }
 
     const round: RoundResult = { seed, ranking };

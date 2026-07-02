@@ -16,7 +16,13 @@ export interface ScoreRow {
   disqualified: boolean;
   survived: boolean;
   score: number;
+  /** Global rank across all species (1 = best score overall). Used for ecosystem-dominance
+   * measurement and as a stable total order; NOT the competitive rank the UI shows. */
   rank: number;
+  /** Rank among species of the SAME role (1 = best of its trophic type). Terrarium ranked
+   * plants/herbivores/carnivores in separate leaderboards — an apex carnivore is never
+   * out-scored by a plant just for being less numerous. This is the competitive rank. */
+  rankInRole: number;
 }
 
 /**
@@ -53,12 +59,20 @@ export function computeScores(world: World): ScoreRow[] {
       survived,
       score,
       rank: 0,
+      rankInRole: 0,
     });
   }
 
   rows.sort((a, b) => b.score - a.score);
+  // Global rank (stable total order) plus rank-within-role (the competitive rank): because
+  // rows are already sorted by score desc, a per-role running counter yields the correct
+  // within-trophic-type ranking in one pass.
+  const perRole = new Map<Role, number>();
   rows.forEach((r, i) => {
     r.rank = i + 1;
+    const n = (perRole.get(r.role) ?? 0) + 1;
+    perRole.set(r.role, n);
+    r.rankInRole = n;
   });
   return rows;
 }
